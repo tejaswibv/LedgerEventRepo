@@ -18,13 +18,15 @@ import com.event.ledger.dto.EventRequest;
 import com.event.ledger.entity.EventEntity;
 import com.event.ledger.service.EventService;
 
-import lombok.RequiredArgsConstructor;
-
 @RestController
-@RequiredArgsConstructor
+
 public class EventController {
 
     private final EventService service;
+    
+    public EventController(EventService service) {
+        this.service = service;
+    }
 
     @PostMapping("/events")
     @ResponseStatus(HttpStatus.CREATED)

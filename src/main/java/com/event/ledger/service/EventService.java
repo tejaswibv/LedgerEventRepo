@@ -13,83 +13,72 @@ import com.event.ledger.entity.EventType;
 import com.event.ledger.repo.EventRepo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import lombok.RequiredArgsConstructor;
 
 @Service
-@RequiredArgsConstructor
 public class EventService {
 
-    private final EventRepo repository;
-    private final ObjectMapper objectMapper;
+	private final EventRepo repository;
+	private final ObjectMapper objectMapper;
 
-    public EventEntity saveEvent(EventRequest request) {
+	public EventService(EventRepo repository, ObjectMapper objectMapper) {
+		this.repository = repository;
+		this.objectMapper = objectMapper;
+	}
 
-        try {
+	public EventEntity saveEvent(EventRequest request) {
 
-            EventEntity entity = new EventEntity();
-            
-            entity.setEventId(request.getEventId());
-            entity.setAccountId(request.getAccountId());
-            entity.setType(request.getType());
-            entity.setAmount(request.getAmount());
-            entity.setCurrency(request.getCurrency());
-            entity.setEventTimestamp(request.getEventTimestamp());
-            entity.setMetadata(objectMapper.writeValueAsString(
-                            request.getMetadata()));
+		try {
 
-            return repository.save(entity);
+			EventEntity entity = new EventEntity();
 
-        } catch (DataIntegrityViolationException ex) {
+			entity.setEventId(request.getEventId());
+			entity.setAccountId(request.getAccountId());
+			entity.setType(request.getType());
+			entity.setAmount(request.getAmount());
+			entity.setCurrency(request.getCurrency());
+			entity.setEventTimestamp(request.getEventTimestamp());
+			entity.setMetadata(objectMapper.writeValueAsString(request.getMetadata()));
 
-            return repository.findByEventId(
-                    request.getEventId()
-            ).orElseThrow();
+			return repository.save(entity);
 
-        } catch (Exception ex) {
+		} catch (DataIntegrityViolationException ex) {
 
-            throw new RuntimeException(
-                    "Failed to save event",
-                    ex
-            );
-        }
-    }
+			return repository.findByEventId(request.getEventId()).orElseThrow();
 
-    public EventEntity getByEventId(String eventId) {
+		} catch (Exception ex) {
 
-        return repository.findByEventId(eventId)
-                .orElseThrow(() ->
-                        new RuntimeException("Event not found"));
-    }
+			throw new RuntimeException("Failed to save event", ex);
+		}
+	}
 
-    public List<EventEntity> getEventsByAccount(
-            String accountId) {
+	public EventEntity getByEventId(String eventId) {
 
-        return repository.findByAccountIdOrderByEventTimestampAsc(
-                accountId
-        );
-    }
+		return repository.findByEventId(eventId).orElseThrow(() -> new RuntimeException("Event not found"));
+	}
 
-    public BalanceResponse getBalance(String accountId) {
+	public List<EventEntity> getEventsByAccount(String accountId) {
 
-        List<EventEntity> events =
-                repository.findByAccountIdOrderByEventTimestampAsc(
-                        accountId
-                );
+		return repository.findByAccountIdOrderByEventTimestampAsc(accountId);
+	}
 
-        BigDecimal balance = BigDecimal.ZERO;
+	public BalanceResponse getBalance(String accountId) {
 
-        for (EventEntity event : events) {
+		List<EventEntity> events = repository.findByAccountIdOrderByEventTimestampAsc(accountId);
 
-            if (event.getType() == EventType.CREDIT) {
+		BigDecimal balance = BigDecimal.ZERO;
 
-                balance = balance.add(event.getAmount());
+		for (EventEntity event : events) {
 
-            } else {
+			if (event.getType() == EventType.CREDIT) {
 
-                balance = balance.subtract(event.getAmount());
-            }
-        }
+				balance = balance.add(event.getAmount());
 
-        return new BalanceResponse(accountId, balance);
-    }
+			} else {
+
+				balance = balance.subtract(event.getAmount());
+			}
+		}
+
+		return new BalanceResponse(accountId, balance);
+	}
 }
